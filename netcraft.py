@@ -73,7 +73,11 @@ def create_output_file(domain, similar_domains):
     domain_status_list = []
     with open(filename, 'w') as f:
         f.write("<!DOCTYPE html>\n<html>\n<head><title>Similar Domains</title><body style=\"background-color:#aaaaaa;\"><h1 style=\"color:white;\"></head>\n<body>\n")
+        if advanced_mode > 0:
+            f.write(f"<h2>advanced: {advanced_mode}, {mode}</h2>\n")
+            
         f.write(f"<h1>exisiting similar to {domain}</h1>\n")
+
         class domain_status:
             def __init__(self, domain, status_code, status_color):
                 self.domain = domain
@@ -96,7 +100,7 @@ def create_output_file(domain, similar_domains):
             domain_status_list.append(domain_status(d, status_code, status_color))
     
     
-        sorted_domain_status_list = sorted(domain_status_list, key=lambda x: x.status_code)
+        sorted_domain_status_list = sorted(domain_status_list, key=lambda x: (isinstance(x.status_code, str), x.status_code))
         #f.write(f'<span style="color: {status_color}"><a href="http://{d}">{d}</a><br><p>Status: {status_code}</p></span>\n')
         for domain_status in sorted_domain_status_list:
             f.write(f'<span style="color: {domain_status.status_color}"><a href="http://{domain_status.domain}">{domain_status.domain}</a><br><p>Status: {domain_status.status_code}</p></span>\n')
@@ -109,17 +113,26 @@ def get_dictionary_list(domain):
     pass
 
 def main():
+    global advanced_mode
+    global mode
     domain = input("domain? ").strip().lower()
     advanced_mode = input("advanced mode? (y/n) ").strip().lower()
     if advanced_mode == 'y':
         global mode
-        advanced_mode = input("advancedness? (0-100) ").strip().lower() 
+        try:
+            advanced_mode = int(input("advancedness? (0-100) ").strip().lower()) 
+        except ValueError:
+            print("\:(")
+            return
         #return
     elif advanced_mode == 'n':
-        pass
+        advanced_mode = 0
+        mode = 0
+        
     else:
         print("Invalid input. Please enter 'y' or 'n'.")
         return
+    print(f"advanced mode: {advanced_mode}, advancedness: {mode}")
     if domain_existence(domain):
         similar_domains = generate_similar_domains(domain)
         output_file = create_output_file(domain, similar_domains)
