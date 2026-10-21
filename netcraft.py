@@ -1,6 +1,7 @@
 import socket
 import os
 import requests
+import shutil
 
 ADJACENCY = {
     'q': ['w', 'a'], 'w': ['q', 'e', 's'], 'e': ['w', 'r', 'd'], 'r': ['e', 't', 'f'],
@@ -69,10 +70,15 @@ def create_output_file(domain, similar_domains):
     domain_name, extension = domain.rsplit('.', 1)
     filename = f"{domain_name}_similar_domains.html"
     filename2 = "similar_domains.html"
-
+    domain_status_list = []
     with open(filename, 'w') as f:
-        f.write("<!DOCTYPE html>\n<html>\n<head><title>Similar Domains</title></head>\n<body>\n")
+        f.write("<!DOCTYPE html>\n<html>\n<head><title>Similar Domains</title><body style=\"background-color:#aaaaaa;\"><h1 style=\"color:white;\"></head>\n<body>\n")
         f.write(f"<h1>exisiting similar to {domain}</h1>\n")
+        class domain_status:
+            def __init__(self, domain, status_code, status_color):
+                self.domain = domain
+                self.status_code = status_code
+                self.status_color = status_color
         for d in sorted(similar_domains):
             try:
                 status_code = requests.head(f"http://{d}").status_code
@@ -86,7 +92,14 @@ def create_output_file(domain, similar_domains):
                 status_color = "#900010"
             else:
                 status_color = "#ffff00"
-            f.write(f'<span style="color: {status_color}"><a href="http://{d}">{d}</a><br><p>Status: {status_code}</p></span>\n')
+            
+            domain_status_list.append(domain_status(d, status_code, status_color))
+    
+    
+        sorted_domain_status_list = sorted(domain_status_list, key=lambda x: x.status_code)
+        #f.write(f'<span style="color: {status_color}"><a href="http://{d}">{d}</a><br><p>Status: {status_code}</p></span>\n')
+        for domain_status in sorted_domain_status_list:
+            f.write(f'<span style="color: {domain_status.status_color}"><a href="http://{domain_status.domain}">{domain_status.domain}</a><br><p>Status: {domain_status.status_code}</p></span>\n')
         f.write("</body>\n</html>\n")
 
     return filename
@@ -97,6 +110,16 @@ def get_dictionary_list(domain):
 
 def main():
     domain = input("domain? ").strip().lower()
+    advanced_mode = input("advanced mode? (y/n) ").strip().lower()
+    if advanced_mode == 'y':
+        global mode
+        advanced_mode = input("advancedness? (0-100) ").strip().lower() 
+        #return
+    elif advanced_mode == 'n':
+        pass
+    else:
+        print("Invalid input. Please enter 'y' or 'n'.")
+        return
     if domain_existence(domain):
         similar_domains = generate_similar_domains(domain)
         output_file = create_output_file(domain, similar_domains)
@@ -108,6 +131,13 @@ def main():
          #       print(f"{similar_domain} exists.")
    # else:
     #    print(f"'{domain}' doesn't resolve — check the spelling and try again.")
+# Source - https://stackoverflow.com/a/61667980
+# Posted by Alex Seceleanu
+# Retrieved 2026-10-20, License - CC BY-SA 4.0
+    src=output_file
+    dst="output-domain-status.html"
+    shutil.copy(src,dst)
+
     
     
 
