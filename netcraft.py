@@ -49,16 +49,19 @@ def generate_similar_domains(domain):
     #tlds = get_all_tlds()
     common_tlds = ["com", "net", "org", "info", "biz", "co", "us", "uk", "ca", "io", "xyz", "cm"]
     mapping = mode_true()
-
+    if advanced_mode > 75:
+        tld_list_used = common_tlds #placeholder
+    else:
+        tld_list_used = common_tlds
     for i, char in enumerate(domain_name):
         if char in mapping:
             for adjacent in mapping[char]:
-                for tld in common_tlds:
+                for tld in tld_list_used:
                     similar_domains.add(domain_name[:i] + adjacent + domain_name[i + 1:] + '.' + tld)
 
     for i in range(len(domain_name)):
         doubled = domain_name[:i] + domain_name[i] + domain_name[i] + domain_name[i + 1:]
-        for tld in common_tlds:
+        for tld in tld_list_used:
 
             similar_domains.add(doubled + '.' + tld)
 
@@ -72,7 +75,7 @@ def create_output_file(domain, similar_domains):
     filename2 = "similar_domains.html"
     domain_status_list = []
     with open(filename, 'w') as f:
-        f.write("<!DOCTYPE html>\n<html>\n<head><title>Similar Domains</title><body style=\"background-color:#aaaaaa;\"><h1 style=\"color:white;\"></head>\n<body>\n")
+        f.write("<!DOCTYPE html>\n<html>\n<head><title>Similar Domains</title><style>table, th, td { border: 1px solid; border-collapse: collapse; }</style> <body style=\"background-color:#aaaaaa;\"><h1 style=\"color:white;\"></head>\n<body>\n")
         if advanced_mode > 0:
             f.write(f"<h2>advanced: {advanced_mode}, {mode}</h2>\n")
             
@@ -102,10 +105,16 @@ def create_output_file(domain, similar_domains):
     
         sorted_domain_status_list = sorted(domain_status_list, key=lambda x: (isinstance(x.status_code, str), x.status_code))
         #f.write(f'<span style="color: {status_color}"><a href="http://{d}">{d}</a><br><p>Status: {status_code}</p></span>\n')
-        for domain_status in sorted_domain_status_list:
-            f.write(f'<span style="color: {domain_status.status_color}"><a href="http://{domain_status.domain}">{domain_status.domain}</a><br><p>Status: {domain_status.status_code}</p></span>\n')
-        f.write("</body>\n</html>\n")
-
+        if advanced_mode == 0:
+            for domain_status in sorted_domain_status_list:
+                f.write(f'<span style="color: {domain_status.status_color}"><a href="http://{domain_status.domain}">{domain_status.domain}</a><br><p>Status: {domain_status.status_code}</p></span>\n')
+            f.write("</body>\n</html>\n")
+        else:
+            f.write(f'<table><tr><th>domain</th><th>status</th></tr>')
+            for domain_status in sorted_domain_status_list:
+               
+                f.write(f'<tr><td><a href="http://{domain_status.domain}">{domain_status.domain}</a></td><td style="color: {domain_status.status_color}">{domain_status.status_code}</td></tr>')
+            f.write(f'</table>')
     return filename
     
 
@@ -118,7 +127,6 @@ def main():
     domain = input("domain? ").strip().lower()
     advanced_mode = input("advanced mode? (y/n) ").strip().lower()
     if advanced_mode == 'y':
-        global mode
         try:
             advanced_mode = int(input("advancedness? (0-100) ").strip().lower()) 
         except ValueError:
@@ -127,12 +135,11 @@ def main():
         #return
     elif advanced_mode == 'n':
         advanced_mode = 0
-        mode = 0
         
     else:
         print("Invalid input. Please enter 'y' or 'n'.")
         return
-    print(f"advanced mode: {advanced_mode}, advancedness: {mode}")
+    print(f"advanced mode: {advanced_mode}")
     if domain_existence(domain):
         similar_domains = generate_similar_domains(domain)
         output_file = create_output_file(domain, similar_domains)
