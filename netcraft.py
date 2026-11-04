@@ -2,7 +2,9 @@ import socket
 import os
 import requests
 import shutil
-
+from pathlib import Path
+import string
+from tqdm import tqdm
 ADJACENCY = {
     'q': ['w', 'a'], 'w': ['q', 'e', 's'], 'e': ['w', 'r', 'd'], 'r': ['e', 't', 'f'],
     't': ['r', 'y', 'g'], 'y': ['t', 'u', 'h'], 'u': ['y', 'i', 'j'], 'i': ['u', 'o', 'k'],
@@ -20,6 +22,14 @@ LOOKALIKES = {
     'g': ['9'], 'q': ['9'], 'a': ['4'], 'e': ['3'], 'rn': ['m'], 'vv': ['w']
 
 }
+def EVILGINX_DICTIONARY_LIST_GENERATOR():
+    file_path = Path(__file__).with_name('Evilginx_Keywords.txt')
+    f = file_path.open('r')
+    dictionary_list = [line.strip() for line in f]
+    f.close()
+    return dictionary_list
+
+
 mode = '100'
 
 
@@ -47,7 +57,7 @@ def generate_similar_domains(domain):
     domain_name, extension = domain.rsplit('.', 1)
     similar_domains = set()
     #tlds = get_all_tlds()
-    common_tlds = ["com", "net", "org", "info", "biz", "co", "us", "uk", "ca", "io", "xyz", "cm"]
+    common_tlds = ["com", "net", "org", "info", "biz", "co", "us", "uk", "ca", "io", "xyz", "cm", "top", "gg", "cc", "xyz", "ai"]
     mapping = mode_true()
     if advanced_mode > 75:
         tld_list_used = common_tlds #placeholder
@@ -59,13 +69,38 @@ def generate_similar_domains(domain):
                 for tld in tld_list_used:
                     similar_domains.add(domain_name[:i] + adjacent + domain_name[i + 1:] + '.' + tld)
 
+
+    for i in range(len(domain_name)):
+        omitted = domain_name[:i] + domain_name[i + 1:]
+        for tld in tld_list_used:
+            similar_domains.add(omitted + '.' + tld)
+
+    
     for i in range(len(domain_name)):
         doubled = domain_name[:i] + domain_name[i] + domain_name[i] + domain_name[i + 1:]
         for tld in tld_list_used:
 
             similar_domains.add(doubled + '.' + tld)
 
-    similar_domains.discard(domain)
+    #keyword add
+    if advanced_mode > 50:
+        print("keywords enabled")
+
+        keywords = EVILGINX_DICTIONARY_LIST_GENERATOR()
+        
+        for tld in tld_list_used:
+            for keyword in keywords:
+                similar_domains.add(domain_name + '-' + keyword + '.' + tld)
+                similar_domains.add(keyword + '-' + domain_name + '.' + tld)
+                if advanced_mode > 75:
+                    similar_domains.add(domain_name + keyword + '.' + tld)
+                    similar_domains.add(keyword + domain_name + '.' + tld)
+
+    
+    
+    
+
+    #similar_domains.discard(domain)
     return similar_domains
 
 
@@ -73,22 +108,25 @@ def create_output_file(domain, similar_domains):
     domain_name, extension = domain.rsplit('.', 1)
     filename = f"{domain_name}_similar_domains.html"
     filename2 = "similar_domains.html"
+    global domain_status_list
     domain_status_list = []
+    ticker_for_more_file_writes = 0
     with open(filename, 'w') as f:
         f.write("<!DOCTYPE html>\n<html>\n<head><title>Similar Domains</title><style>table, th, td { border: 1px solid; border-collapse: collapse; }</style> <body style=\"background-color:#aaaaaa;\"><h1 style=\"color:white;\"></head>\n<body>\n")
         if advanced_mode > 0:
             f.write(f"<h2>advanced: {advanced_mode}, {mode}</h2>\n")
             
-        f.write(f"<h1>exisiting similar to {domain}</h1>\n")
+        f.write(f"<h1>exisiting similar to {domain}</h1><br><h3>total: {len(similar_domains)}, {len(domain_status_list)}</h3>\n")
 
         class domain_status:
             def __init__(self, domain, status_code, status_color):
                 self.domain = domain
                 self.status_code = status_code
                 self.status_color = status_color
-        for d in sorted(similar_domains):
+        
+        for d in tqdm(similar_domains, desc="Checking domains"):
             try:
-                status_code = requests.head(f"http://{d}").status_code
+                status_code = requests.head(f"http://{d}", timeout=2).status_code
             except requests.exceptions.RequestException:
                 status_code = "DNE"
             if status_code == 200:
@@ -101,6 +139,7 @@ def create_output_file(domain, similar_domains):
                 status_color = "#ffff00"
             
             domain_status_list.append(domain_status(d, status_code, status_color))
+
     
     
         sorted_domain_status_list = sorted(domain_status_list, key=lambda x: (isinstance(x.status_code, str), x.status_code))
@@ -139,7 +178,7 @@ def main():
     else:
         print("Invalid input. Please enter 'y' or 'n'.")
         return
-    print(f"advanced mode: {advanced_mode}")
+    
     if domain_existence(domain):
         similar_domains = generate_similar_domains(domain)
         output_file = create_output_file(domain, similar_domains)
